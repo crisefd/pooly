@@ -1,108 +1,62 @@
 defmodule Pooly.Server do
-#	defstruct sup: nil, worker_sup: nil, size: nil, workers: nil, mfa: nil
-	use GenServer
-	import Supervisor.Spec
+  @moduledoc """
+    Kicks-starts Pooly.PoolsSupervisor
+   """
 
-	defmodule State do
-	defstruct sup: nil, worker_sup: nil, size: nil, workers: nil, mfa: nil, monitors: nil 
-#		defstruct sup: nil, size: nil, mfa: nil
-  end
-	
-	def status do
-		GenServer.call(__MODULE__, :status)
-  end
+  use GenServer
+  import Supervisor.Spec
 
-	def checkin(worker_pid) do
-		GenServer.cast(__MODULE__, {:checkin, worker_pid})
- 	end	
 
-  def checkout do
-		GenServer.call(__MODULE__, :checkout)
-	end
+  # API
 
-	def start_link(sup, pool_config) do
-		GenServer.start_link(__MODULE__, [sup, pool_config], name: __MODULE__)
-	end
-
-	def init([sup, pool_config]) when is_pid(sup) do
-		monitors = :ets.new(:monitors, [:private])
-		init(pool_config, %State{sup: sup, monitors: monitors})
+  def start_link(pools_config) do
+    GenServer.start_link(
+      __MODULE__,
+      pools_config,
+      name: __MODULE__
+    )
   end
 
-	def init([{:mfa, mfa}| rest], state) do
-		init(rest, %{state | mfa: mfa})
-	end
-
-	def init([{:size, size} | rest], state) do
-		init(rest, %{state | size: size})
+  def status(pool_name) do
+    GenServer.call(:"#{pool_name}Server", :status)
   end
 
-	def init([_ | rest], state) do
-		init(rest, state)
+  def checkin(pool_name, worker_pid) do
+    GenServer.cast(
+      :"#{pool_name}Server",
+      {:checkin, worker_pid}
+    )
   end
 
-	def init([], state) do
-		send(self(), :start_worker_supervisor)
-		{:ok, state}
-	end
-
-	def handle_call(:status,
-								  _from,
-							 	 state = %State{workers: workers, monitors: monitors}) do
-		{:reply, {length(workers), :ets.info(monitors, :size)}, state}
+  def checkout(pool_name) do
+    GenServer.call(:"#{pool_name}Server", :checkout)
   end
 
-	def handle_call(:checkout, {from_pid, _ref}, 
-							    state = %State{workers: workers, monitors: monitors}) do
-		case workers do
-			[worker | rest] ->
-				ref = Process.monitor(from_pid)
-				true = :ets.insert(monitors, {worker, ref})
-				{:reply, worker, %{state | workers: rest}}
-			[] ->
-				{:reply, :noproc, state}
-	  end		
-	end
+  # GenServer callbacks
 
-  def handle_info(:start_worker_supervisor, 
-  						    state = %State{sup: sup, mfa: mfa, size: size}) do
-    {:ok, worker_sup} = Supervisor.start_child(sup, supervisor_spec(mfa))
-    workers = prepopulate(size, worker_sup)
-    {:noreply, %{state | worker_sup: worker_sup, workers: workers}}
+  def init(pools_config) do
+    send_start_pool_signal = fn pool_config ->
+      send(self(), {:start_pool, pool_config})
+    end
+    pools_config |> Enum.each(send_start_pool_signal)
+    {:ok, pools_config}
   end
 
-	def handle_cast({:checkin, worker},
-								  state = %State{workers: workers, monitors: monitors}) do
-		case :ets.lookup(monitors, worker) do
-			[{pid, ref}] -> 
-					true =  Process.demonitor(ref)
-					true = :ets.delete(monitors, pid)
-					{:noreply, %{state | workers: [pid | workers]}}
-			[] ->
-				{:noreply, state}
-		end
+  def handle_info({:start_pool, pool_config}, state) do
+    {:ok, _pool_supervisor} =
+      Supervisor.start_child(
+        Pooly.PoolsSupervisor,
+        supervisor_spec(pool_config)
+      )
+
+    {:noreply, state}
   end
 
-  defp supervisor_spec(mfa) do
-		opts = [restart: :temporary]
-    supervisor(Pooly.WorkerSupervisor, [mfa], opts)
+  # Private functions
+
+  defp supervisor_spec(pool_config) do
+    opts = [id: :"#{pool_config[:name]}Supervisor"]
+    supervisor(Pooly.PoolSupervisor, [pool_config], opts)
   end
-	
-	defp prepopulate(size, sup) do
-		prepopulate(size, sup, [])
-  end
-
-	defp prepopulate(size, _sup, workers) when size == 0 do
-		workers
-	end
-
-	defp prepopulate(size, sup, workers) do
-		prepopulate(size - 1, sup, [new_worker(sup) | workers])
-	end
-
-	defp new_worker(sup) do
-		{:ok, worker} = Supervisor.start_child(sup, [[]])
-		worker
-	end
 
 end
