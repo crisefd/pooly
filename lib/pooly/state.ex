@@ -9,5 +9,8 @@ defmodule State do
             mfa: nil,
             monitors: nil,
             name: nil,
-            pool_sup: nil
+            pool_sup: nil,
+            max_overflow: nil,
+            overflow: nil,
+            waiting: nil
 end
