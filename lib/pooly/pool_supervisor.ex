@@ -10,7 +10,7 @@ defmodule Pooly.PoolSupervisor do
   def start_link(pool_config) do
     Supervisor.start_link(__MODULE__,
                           pool_config,
-                          name: :"#{pool_config[:name]}Supervisor")
+                          [name: :"#{pool_config[:name]}Supervisor"])
   end
 
   # GenServer callbacks

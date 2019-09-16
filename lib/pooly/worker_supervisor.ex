@@ -16,7 +16,7 @@ defmodule Pooly.WorkerSupervisor do
     Process.link(pool_server)
     worker_opts = [restart: :temporary, shutdown: 5_000, function: f]
     children = [worker(m, a, worker_opts)]
-    opts = [strategy: :simple_one_for_one, max_restarts: 5, max_seconds: 5]
+    opts = [strategy: :simple_one_for_one, max_restarts: 5, max_seconds: 3600]
     supervise(children, opts)
   end
 end
