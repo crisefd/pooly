@@ -41,4 +41,9 @@ defmodule Pooly do
   def status(pool_name) do
     Pooly.Server.status(pool_name)
   end
+
+  def transaction(pool_name, fun, timeout) do
+    Pooly.Server.transaction(pool_name, fun, timeout)
+  end
+
 end

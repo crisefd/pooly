@@ -1,16 +1,16 @@
-defmodule State do
-  @moduledoc """
-    The state of the server
-  """
-  defstruct sup: nil,
-            worker_sup: nil,
-            size: nil,
-            workers: nil,
-            mfa: nil,
-            monitors: nil,
-            name: nil,
-            pool_sup: nil,
-            max_overflow: nil,
-            overflow: nil,
-            waiting: nil
-end
+  defmodule State do
+    @moduledoc """
+      The server state
+    """
+    defstruct pool_sup: nil,
+    worker_sup: nil,
+    monitors: nil,
+    monitors: nil,
+    size: nil,
+    workers: nil,
+    name: nil,
+    mfa: nil,
+    waiting: nil,
+    overflow: nil,
+    max_overflow: nil
+  end

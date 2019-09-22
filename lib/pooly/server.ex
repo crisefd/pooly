@@ -17,6 +17,15 @@ defmodule Pooly.Server do
     )
   end
 
+  def transaction(pool_name, fun, timeout) do
+    worker = checkout(pool_name, true, timeout)
+    try do
+      fun.(worker)
+      after
+        checkin(pool_name, worker)
+    end
+  end
+
   def status(pool_name) do
     Pooly.PoolServer.status(pool_name)
   end
@@ -28,6 +37,7 @@ defmodule Pooly.Server do
   def checkout(pool_name, block, timeout) do
     Pooly.PoolServer.checkout(pool_name, block, timeout)
   end
+
 
   # GenServer callbacks
 
