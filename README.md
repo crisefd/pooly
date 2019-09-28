@@ -1,6 +1,6 @@
 # Pooly
 
-**TODO: Add description**
+**Small worker-pool application**
 
 ## Installation
 
